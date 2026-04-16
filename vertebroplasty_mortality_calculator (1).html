@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vertebroplasty Mortality Risk Calculator</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; background: #fff; color: #1a1a1a; padding: 24px; max-width: 860px; margin: 0 auto; font-size: 13px; }
+  h1 { font-size: 18px; font-weight: 600; margin-bottom: 4px; }
+  .subtitle { font-size: 12px; color: #666; margin-bottom: 24px; line-height: 1.5; }
+  .section { margin-bottom: 20px; }
+  .section-title { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; color: #888; margin-bottom: 8px; padding-bottom: 5px; border-bottom: 0.5px solid #ddd; }
+  .field { display: flex; align-items: center; justify-content: space-between; padding: 7px 0; border-bottom: 0.5px solid #f0f0ee; gap: 12px; }
+  .field:last-child { border-bottom: none; }
+  .field-label { font-size: 13px; color: #1a1a1a; flex: 1; }
+  .field-sub { font-size: 11px; color: #888; display: block; margin-top: 1px; }
+  .toggle-row { display: flex; gap: 5px; flex-shrink: 0; }
+  .toggle-btn { font-size: 11px; padding: 4px 11px; border: 0.5px solid #ccc; border-radius: 6px; background: #fff; color: #666; cursor: pointer; transition: all 0.12s; }
+  .toggle-btn.active { background: #EBF4FF; color: #0C447C; border-color: #378ADD; font-weight: 500; }
+  .toggle-btn:hover:not(.active) { background: #f7f7f5; }
+  .func-btn { font-size: 11px; padding: 4px 9px; border: 0.5px solid #ccc; border-radius: 6px; background: #fff; color: #666; cursor: pointer; }
+  .func-btn.active { background: #EBF4FF; color: #0C447C; border-color: #378ADD; font-weight: 500; }
+  .age-input { width: 68px; padding: 4px 8px; font-size: 13px; border: 0.5px solid #ccc; border-radius: 6px; background: #fff; color: #1a1a1a; text-align: center; }
+  .result-card { border-radius: 10px; border: 0.5px solid #ddd; padding: 1.2rem; background: #fff; margin-top: 16px; }
+  .result-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+  .metric { background: #f7f7f5; border-radius: 7px; padding: 10px 12px; }
+  .metric-label { font-size: 11px; color: #888; margin-bottom: 3px; }
+  .metric-value { font-size: 22px; font-weight: 600; color: #1a1a1a; }
+  .metric-sub { font-size: 10px; color: #888; margin-top: 2px; }
+  .risk-bar-wrap { margin: 0 0 12px; }
+  .risk-bar-label { font-size: 11px; color: #888; margin-bottom: 4px; display: flex; justify-content: space-between; }
+  .risk-bar-track { height: 8px; background: #f0f0ee; border-radius: 4px; overflow: hidden; border: 0.5px solid #ddd; }
+  .risk-bar-fill { height: 100%; border-radius: 4px; transition: width 0.4s ease, background 0.4s ease; }
+  .interp { font-size: 12px; color: #555; line-height: 1.6; padding: 10px 12px; background: #f7f7f5; border-radius: 7px; }
+  .interp b { font-weight: 600; color: #1a1a1a; }
+  .disclaimer { font-size: 10.5px; color: #999; margin-top: 12px; line-height: 1.5; border-top: 0.5px solid #eee; padding-top: 10px; }
+  .badge { font-size: 10px; background: #EBF4FF; color: #0C447C; border-radius: 20px; padding: 1px 7px; margin-left: 6px; vertical-align: middle; }
+</style>
+</head>
+<body>
+
+<h1>Vertebroplasty Mortality Risk Calculator</h1>
+<p class="subtitle">Pre-procedural frailty stratification using the Risk Analysis Index — ICD version (RAI-ICD).<br>Based on: NIS 2017–2022 vertebroplasty cohort (n=33,882) · Dicpinigaitis AJ et al., JAMA Network Open 2024.</p>
+
+<div class="section">
+  <div class="section-title">Patient demographics</div>
+  <div class="field">
+    <div class="field-label">Age (years)</div>
+    <input type="number" class="age-input" id="age" value="75" min="18" max="110">
+  </div>
+  <div class="field">
+    <div class="field-label">Sex</div>
+    <div class="toggle-row">
+      <button class="toggle-btn" id="sex-male" onclick="setSex('male')">Male</button>
+      <button class="toggle-btn active" id="sex-female" onclick="setSex('female')">Female</button>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-title">RAI-ICD frailty parameters</div>
+  <div class="field">
+    <div class="field-label">Active severe cancer<span class="field-sub">Lung, pancreas, liver, brain, metastatic — excluding remission</span></div>
+    <div class="toggle-row">
+      <button class="toggle-btn active" id="cancer-no" onclick="setToggle('cancer','no')">No</button>
+      <button class="toggle-btn" id="cancer-yes" onclick="setToggle('cancer','yes')">Yes</button>
+    </div>
+  </div>
+  <div class="field">
+    <div class="field-label">Congestive heart failure</div>
+    <div class="toggle-row">
+      <button class="toggle-btn active" id="chf-no" onclick="setToggle('chf','no')">No</button>
+      <button class="toggle-btn" id="chf-yes" onclick="setToggle('chf','yes')">Yes</button>
+    </div>
+  </div>
+  <div class="field">
+    <div class="field-label">Renal failure<span class="field-sub">CKD stage 4–5, ESRD, or dialysis dependence</span></div>
+    <div class="toggle-row">
+      <button class="toggle-btn active" id="renal-no" onclick="setToggle('renal','no')">No</button>
+      <button class="toggle-btn" id="renal-yes" onclick="setToggle('renal','yes')">Yes</button>
+    </div>
+  </div>
+  <div class="field">
+    <div class="field-label">Shortness of breath / dyspnea</div>
+    <div class="toggle-row">
+      <button class="toggle-btn active" id="sob-no" onclick="setToggle('sob','no')">No</button>
+      <button class="toggle-btn" id="sob-yes" onclick="setToggle('sob','yes')">Yes</button>
+    </div>
+  </div>
+  <div class="field">
+    <div class="field-label">Unintentional weight loss<span class="field-sub">Cachexia, sarcopenia, failure to thrive</span></div>
+    <div class="toggle-row">
+      <button class="toggle-btn active" id="wtloss-no" onclick="setToggle('wtloss','no')">No</button>
+      <button class="toggle-btn" id="wtloss-yes" onclick="setToggle('wtloss','yes')">Yes</button>
+    </div>
+  </div>
+  <div class="field">
+    <div class="field-label">Poor appetite / anorexia</div>
+    <div class="toggle-row">
+      <button class="toggle-btn active" id="appetite-no" onclick="setToggle('appetite','no')">No</button>
+      <button class="toggle-btn" id="appetite-yes" onclick="setToggle('appetite','yes')">Yes</button>
+    </div>
+  </div>
+  <div class="field">
+    <div class="field-label">Cognitive decline / dementia</div>
+    <div class="toggle-row">
+      <button class="toggle-btn active" id="cog-no" onclick="setToggle('cog','no')">No</button>
+      <button class="toggle-btn" id="cog-yes" onclick="setToggle('cog','yes')">Yes</button>
+    </div>
+  </div>
+  <div class="field">
+    <div class="field-label">Functional status</div>
+    <div class="toggle-row">
+      <button class="func-btn active" id="func-0" onclick="setFunc(0)">Independent</button>
+      <button class="func-btn" id="func-1" onclick="setFunc(1)">Partial</button>
+      <button class="func-btn" id="func-2" onclick="setFunc(2)">Total</button>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-title">Clinical context</div>
+  <div class="field">
+    <div class="field-label">Indication<span class="field-sub">Primary reason for vertebroplasty</span></div>
+    <div class="toggle-row">
+      <button class="toggle-btn active" id="ind-benign" onclick="setToggle('indication','benign')">Osteoporotic / benign</button>
+      <button class="toggle-btn" id="ind-malignant" onclick="setToggle('indication','malignant')">Malignant</button>
+    </div>
+  </div>
+  <div class="field">
+    <div class="field-label">Admission type</div>
+    <div class="toggle-row">
+      <button class="toggle-btn active" id="adm-elective" onclick="setToggle('admission','elective')">Elective</button>
+      <button class="toggle-btn" id="adm-emergent" onclick="setToggle('admission','emergent')">Emergent</button>
+    </div>
+  </div>
+</div>
+
+<div class="result-card">
+  <div class="result-grid">
+    <div class="metric">
+      <div class="metric-label">RAI-ICD score</div>
+      <div class="metric-value" id="r-score">—</div>
+      <div class="metric-sub" id="r-cat">—</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Predicted mortality</div>
+      <div class="metric-value" id="r-mort">—</div>
+      <div class="metric-sub" id="r-ci">95% CI —</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Post-acute care discharge</div>
+      <div class="metric-value" id="r-disch">—</div>
+      <div class="metric-sub">adjusted odds vs. robust</div>
+    </div>
+  </div>
+  <div class="risk-bar-wrap">
+    <div class="risk-bar-label"><span>In-hospital mortality risk</span><span id="r-bar-pct">—</span></div>
+    <div class="risk-bar-track"><div class="risk-bar-fill" id="r-bar" style="width:0%;background:#888"></div></div>
+  </div>
+  <div class="interp" id="r-interp">Complete the form above to see risk estimate.</div>
+  <div class="disclaimer">For research and educational use only. Not validated for individual clinical decision-making. Predicted probabilities are population-level adjusted estimates from NIS 2017–2022 (n=33,882). RAI-ICD scoring: Dicpinigaitis AJ et al. JAMA Network Open 2024;7(5):e2413166.</div>
+</div>
+
+<script>
+const state = { age:75, sex:'female', cancer:'no', chf:'no', renal:'no', sob:'no', wtloss:'no', appetite:'no', cog:'no', func:0, indication:'benign', admission:'elective' };
+
+function setSex(v) {
+  state.sex=v;
+  document.getElementById('sex-male').className='toggle-btn'+(v==='male'?' active':'');
+  document.getElementById('sex-female').className='toggle-btn'+(v==='female'?' active':'');
+  calc();
+}
+
+const toggleIds = { cancer:['cancer-no','cancer-yes'], chf:['chf-no','chf-yes'], renal:['renal-no','renal-yes'], sob:['sob-no','sob-yes'], wtloss:['wtloss-no','wtloss-yes'], appetite:['appetite-no','appetite-yes'], cog:['cog-no','cog-yes'], indication:['ind-benign','ind-malignant'], admission:['adm-elective','adm-emergent'] };
+const toggleVals = { cancer:['no','yes'], chf:['no','yes'], renal:['no','yes'], sob:['no','yes'], wtloss:['no','yes'], appetite:['no','yes'], cog:['no','yes'], indication:['benign','malignant'], admission:['elective','emergent'] };
+
+function setToggle(key,v) {
+  state[key]=v;
+  toggleIds[key].forEach((id,i) => { document.getElementById(id).className='toggle-btn'+(toggleVals[key][i]===v?' active':''); });
+  calc();
+}
+
+function setFunc(v) {
+  state.func=v;
+  [0,1,2].forEach(i => { document.getElementById('func-'+i).className='func-btn'+(i===v?' active':''); });
+  calc();
+}
+
+function getAgePoints(age, hasCancer) {
+  const b=[[19,0,43],[24,2,43],[29,4,43],[34,6,44],[39,9,44],[44,11,44],[49,13,44],[54,15,44],[59,18,44],[64,20,45],[69,22,45],[74,25,45],[79,27,45],[84,29,45],[89,31,46],[94,34,46],[99,36,46],[200,38,46]];
+  for(const [max,nc,wc] of b) { if(age<=max) return hasCancer?wc:nc; }
+  return hasCancer?46:38;
+}
+
+function calcRAI() {
+  const age=parseInt(document.getElementById('age').value)||75;
+  state.age=age;
+  const hC=state.cancer==='yes';
+  let s=getAgePoints(age,hC);
+  if(state.sex==='male') s+=3;
+  if(state.wtloss==='yes') s+=2;
+  if(state.appetite==='yes') s+=1;
+  if(state.renal==='yes') s+=3;
+  if(state.chf==='yes') s+=3;
+  if(state.sob==='yes') s+=2;
+  const fcm=[[0,9],[10,15],[20,21]];
+  s+=fcm[state.func][state.cog==='yes'?1:0];
+  return Math.min(81,Math.max(0,s));
+}
+
+function getCategory(score) {
+  if(score<27) return {cat:'Robust',label:'Robust (<27)',idx:0};
+  if(score<=35) return {cat:'Normal',label:'Normal (27–35)',idx:1};
+  if(score<=45) return {cat:'Frail',label:'Frail (36–45)',idx:2};
+  return {cat:'Very frail',label:'Very frail (>45)',idx:3};
+}
+
+const mortData = {
+  benign:  {mort:[1.3,2.0,3.3,8.6],  ci:['1.0–1.6','1.7–2.3','2.8–3.7','7.3–9.9']},
+  malignant:{mort:[5.6,4.1,11.1,17.6],ci:['4.6–6.6','3.4–4.9','9.6–12.5','16.0–19.2']}
+};
+const dischOR=['Ref.','1.39','2.04','1.85'];
+const catColors=['#1D9E75','#185FA5','#BA7517','#A32D2D'];
+const admMort={benign:{elective:[0.7,1.6,4.0,8.0],emergent:[3.0,2.5,5.3,13.9]}};
+
+function calc() {
+  const score=calcRAI();
+  const {cat,label,idx}=getCategory(score);
+  const ind=state.indication, adm=state.admission;
+  let mort,ci;
+  if(adm==='elective'&&ind==='benign'&&admMort.benign.elective[idx]!==null) { mort=admMort.benign.elective[idx]; ci=mortData.benign.ci[idx]; }
+  else if(adm==='emergent'&&ind==='benign') { mort=admMort.benign.emergent[idx]; ci=mortData.benign.ci[idx]; }
+  else { mort=mortData[ind].mort[idx]; ci=mortData[ind].ci[idx]; }
+
+  document.getElementById('r-score').textContent=score;
+  document.getElementById('r-cat').textContent=label;
+  document.getElementById('r-mort').textContent=mort.toFixed(1)+'%';
+  document.getElementById('r-ci').textContent='95% CI '+ci+'%';
+  document.getElementById('r-disch').textContent=idx===0?'Reference':'aOR '+dischOR[idx];
+  document.getElementById('r-bar-pct').textContent=mort.toFixed(1)+'%';
+
+  const bar=document.getElementById('r-bar');
+  bar.style.width=Math.min(100,(mort/20)*100).toFixed(1)+'%';
+  bar.style.background=catColors[idx];
+
+  const rw=mort<2?'low':mort<5?'moderate':mort<10?'elevated':'high';
+  let interp=`<b>${cat} frailty</b> (RAI-ICD ${score}) · <b>${ind==='malignant'?'malignant':'non-malignant'} indication</b> · <b>${adm}</b> admission. Predicted in-hospital mortality: <b>${mort.toFixed(1)}%</b> — ${rw} risk. `;
+  if(idx===3&&ind==='malignant') interp+='Very frail patients with malignant disease face the highest procedural mortality in this cohort. Goals-of-care discussion is strongly recommended.';
+  else if(idx===3&&ind==='benign') interp+='Very frail patients with benign indications carry significantly elevated mortality. Consider elective scheduling and optimization if feasible.';
+  else if(adm==='emergent'&&idx>=2) interp+='Emergent admission in frail patients is associated with substantially higher mortality. Expedited outpatient evaluation may reduce risk.';
+  else if(idx===0) interp+='Robust patients carry low procedural mortality. Proceed with standard risk counseling.';
+  else interp+='Standard pre-procedural frailty counseling is recommended.';
+  document.getElementById('r-interp').innerHTML=interp;
+}
+
+document.getElementById('age').addEventListener('input',calc);
+calc();
+</script>
+</body>
+</html>
